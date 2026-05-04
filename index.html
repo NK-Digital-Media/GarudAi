@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Garuda AI System</title>
+    <style>
+        body { background: #000; color: #00f2ff; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; text-align: center; }
+        .header { padding: 20px; border-bottom: 1px solid #00f2ff; width: 100%; box-sizing: border-box; }
+        .orb { width: 100px; height: 100px; border: 2px solid #00f2ff; border-radius: 50%; margin: 30px auto; box-shadow: 0 0 20px #00f2ff; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: 0.3s; }
+        .btn-mic { background: #00f2ff; color: #000; border: none; padding: 15px 30px; border-radius: 50px; font-weight: bold; cursor: pointer; font-size: 16px; box-shadow: 0 0 15px #00f2ff; }
+        #res-box { width: 90%; background: #051a1a; border: 1px solid #00f2ff; padding: 15px; margin: 20px 0; border-radius: 10px; min-height: 60px; box-sizing: border-box; font-size: 14px; color: #fff; text-align: left; line-height: 1.4; }
+        #chart { width: 95%; height: 300px; margin-top: 10px; border: 1px solid #333; border-radius: 10px; overflow: hidden; }
+        .thinking { border-color: gold; box-shadow: 0 0 30px gold; color: gold; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2 style="margin:0; letter-spacing: 3px;">🦅 GARUDA AI</h2>
+    </div>
+
+    <div class="orb" id="orb">ACTIVE</div>
+
+    <button class="btn-mic" onclick="startGaruda()">SAY COMMAND</button>
+
+    <div id="res-box">
+        <div id="msg">> System Online. Ready for Neeraj.</div>
+    </div>
+
+    <div id="chart">
+        <div id="tv_chart"></div>
+        <script src="https://s3.tradingview.com/tv.js"></script>
+        <script>
+            new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "15", "theme": "dark", "style": "1", "container_id": "tv_chart" });
+        </script>
+    </div>
+
+    <script>
+        // FIXED KEY
+        const KEY = "AIzaSyAc2mlvV5BtK0uL6Jg1896qF5Y4BdAARMw";
+
+        function speak(txt) {
+            window.speechSynthesis.cancel(); // Purani voice roko
+            const ut = new SpeechSynthesisUtterance(txt);
+            ut.lang = 'hi-IN';
+            ut.rate = 1;
+            window.speechSynthesis.speak(ut);
+        }
+
+        async function startGaruda() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Browser mic support nahi kar raha. Chrome use karein.");
+                return;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.lang = 'hi-IN';
+            
+            rec.onstart = () => { 
+                document.getElementById('orb').innerText = "LISTENING";
+                document.getElementById('orb').style.borderColor = "#00f2ff";
+                document.getElementById('msg').innerText = "> Listening to Neeraj...";
+            };
+
+            rec.onerror = (e) => {
+                document.getElementById('msg').innerText = "> Mic Error: " + e.error;
+                document.getElementById('orb').innerText = "ACTIVE";
+            };
+
+            rec.onresult = async (e) => {
+                const userMsg = e.results[0][0].transcript;
+                document.getElementById('msg').innerText = "> Neeraj: " + userMsg;
+                
+                // AI THINKING MODE
+                const orb = document.getElementById('orb');
+                orb.innerText = "THINKING";
+                orb.classList.add('thinking');
+
+                try {
+                    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${KEY}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            contents: [{ parts: [{ text: "Tumhara naam Garuda AI hai. Tum Neeraj ke assistant ho. Iska hindi mein ek bahut chhota aur professional reply do: " + userMsg }] }] 
+                        })
+                    });
+
+                    const d = await r.json();
+                    
+                    if(d.error) {
+                        throw new Error(d.error.message);
+                    }
+
+                    const reply = d.candidates[0].content.parts[0].text;
+                    
+                    document.getElementById('msg').innerText = "> Garuda: " + reply;
+                    orb.innerText = "SPEAKING";
+                    orb.classList.remove('thinking');
+                    speak(reply);
+
+                    setTimeout(() => { orb.innerText = "ACTIVE"; }, 3000);
+
+                } catch (err) {
+                    document.getElementById('msg').innerText = "> Brain Error: " + err.message;
+                    orb.innerText = "ERROR";
+                    orb.classList.remove('thinking');
+                }
+            };
+            rec.start();
+        }
+    </script>
+</body>
+</html>
